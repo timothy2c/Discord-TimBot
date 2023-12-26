@@ -3,6 +3,8 @@ import random
 import asyncio
 import fileinput
 import time
+import csv
+import emoji
 from lists import *
 from discord.ext import commands
 from config import TOKEN
@@ -384,9 +386,48 @@ async def vocabulous_duel(ctx, player_two: discord.User):
         
         
        
+@bot.slash_command(name="jeopardy_add", guild_ids=[758138986546987019], description="Add a question and answer to the jeopardy pool (Duds Exclusive)")
+@commands.max_concurrency(1, per=commands.BucketType.user, wait=False)     
+async def jeopardy_add(ctx, question: str, answer: str):
+    row = [str(question), emoji.demojize(str(answer)), emoji.demojize(str(ctx.user))]
+    filename = "jeopardy.csv"
+    with open(filename, "a",encoding ='UTF8', newline='') as csvfile:
+        csvwriter = csv.writer(csvfile)
+        csvwriter.writerow(row)
+    await ctx.respond(emoji.emojize("Successfully added question to the jeopardy! :thumbsup:"))
 
-        
-        
+@bot.slash_command(name="start_jeopardy",guild_ids=[758138986546987019], description="Start Jeopardy with stored questions")
+@commands.max_concurrency(1, per=commands.BucketType.guild, wait=False)  
+async def start_jeopardy(ctx):
+    await ctx.respond("Jeopardy Started.")
+    file = open("jeopardy.csv", "r")
+    questions = list(csv.reader(file, delimiter=","))
+    file.close()
+    random.shuffle(questions) # randomize the list of questions
+
+    print(questions)
+
+    for i in range(len(questions)):
+        embed = discord.Embed(title="Jeopardy Question "+ str(i + 1),colour=discord.Colour.blue(),description="React to the embed to go to the next part.")
+        embed.add_field(name="Question",value=questions[i][0])
+        embed.set_footer(text="Author: " + str(questions[i][2]))
+        msg = await ctx.send(embed=embed)
+
+        await bot.wait_for('reaction_add')
+        await msg.delete()
+        embed = discord.Embed(title="Jeopardy Question "+ str(i+1),colour=discord.Colour.blue(),description="React to the embed to go to the next part.")
+        embed.add_field(name="Question",value=emoji.demojize(questions[i][0]))
+        embed.insert_field_at(1, name="Answer", value=emoji.demojize(questions[i][1]))
+        embed.set_footer(text="Author: " + str(questions[i][2]))
+        msg = await ctx.send(embed=embed)
+        await bot.wait_for('reaction_add')
+        await msg.delete()
+
+        if (i == len(questions)-1):
+            embed = discord.Embed(title="Game Over!")
+            await ctx.send(embed=embed)
+
+
 
 
 
